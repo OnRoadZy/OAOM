@@ -4,9 +4,13 @@
          "M-class.rkt")
 
 (provide ball%)
-
-(define ball%
-  (class object%
+  
+(define/contract ball%
+  (class/c (init-field [at at?]
+                       [lt +real/c])
+           [update-oaom-init (->m #:m +real/c #:ri +real/c any)]
+           [update-field (->m +real/c real? any)])
+  (class M-object%
     (super-new)
 
     (init-field at ;at：轨道角度，应在(0 <= at < 360)之间
@@ -21,6 +25,8 @@
            [aF (eval-aF ri)] ;球的力矩角
            [M (eval-M ri)]) ;力矩
 
+    (inherit check-at)
+    
     ;;=============================================
     ;更新oaom初始字段值：
     (define/public (update-oaom-init #:m m-set #:ri ri-set)
@@ -30,14 +36,7 @@
     ;设置at值：
     (define/private (set-at dta)
       (set! at (check-at (+ at dta))))
-    
-    ;检查a值，确保在360以内：
-    (define/private (check-at a)
-      (let ([ac (- a (* (quotient (truncate a) 360) 360))])
-        (if (>= ac 0)
-            ac
-            (+ ac 360))))
-    
+   
     ;求取af的宏：
     (define-syntax-rule (eval-af)
       (cond ;必须确保在初始化轨道时，不能让其角度大于过等于360
@@ -75,21 +74,29 @@
     (define/private (set-am)
       (set! am (eval-am)))
     
-    ;求取v：
+    ;设置v：
     (define/private (set-v dt)
-      (set! v (cond
-                [(or (and (= l 0) (< am 0)) ;球在轮子内侧，加速度也向内侧
-                     (and (= l lt) (> am 0))) ;球在外侧，加速度也向外侧
-                 0] ;球的速度为0
-                [else (+ v (* am dt))])))
+      (set! v (eval-v dt)))
+    
+    ;求值v：
+    (define-syntax-rule (eval-v dt)
+      (cond
+        [(or (and (= l 0) (< am 0)) ;球在轮子内侧，加速度也向内侧
+             (and (= l lt) (> am 0))) ;球在外侧，加速度也向外侧
+         0] ;球的速度为0
+        [else (+ v (* am dt))]))
  
-    ;求取l：
+    ;设置l：
     (define/private (set-l dt)
-      (set! l (let ([cl (+ l (* (+ v (* am dt)) dt))])
-                (cond
-                  [(<= cl 0) 0] ;到内侧底
-                  [(>= cl lt) lt] ;到外侧底
-                  [else cl]))))
+      (set! l (eval-l dt)))
+    
+    ;求取l：
+    (define-syntax-rule (eval-l dt)
+      (let ([cl (+ l (* (+ v (* am dt)) dt))])
+        (cond
+          [(<= cl 0) 0] ;到内侧底
+          [(>= cl lt) lt] ;到外侧底
+          [else cl])))
 
     ;求取M值：
     (define/private (eval-M ri)
@@ -152,47 +159,47 @@
 
 ;测试：===================================================
 (module+ test
-;ball在270-90之间：
-(define ball-1 (new ball% [at 20] [lt 1]))
-(display
- (string-append
-  (format "ball在270-90之间，\n")
-  (send ball-1 format-property)
-  (format "设定时间后，\n")
-  (begin
-    (send ball-1 update-field 5 30)
-    (send ball-1 format-property))
-  "\n\n"))
+  ;ball在270-90之间：
+  (define ball-1 (new ball% [at 20] [lt 1]))
+  (display
+   (string-append
+    (format "ball在270-90之间，\n")
+    (send ball-1 format-property)
+    (format "设定时间后，\n")
+    (begin
+      (send ball-1 update-field 5 30)
+      (send ball-1 format-property))
+    "\n\n"))
   )
 
 (module+ test
-;ball在90-270之间：
-(define ball-2 (new ball% [at 120] [lt 1]))
-(display
- (string-append
-  (format "ball在90-270之间，\n")
-  (send ball-2 format-property)
-  (format "设定时间后，\n")
-  (begin
-    (send ball-2 update-field 5 125)
-    (send ball-2 format-property))
-  "\n\n"))
+  ;ball在90-270之间：
+  (define ball-2 (new ball% [at 120] [lt 1]))
+  (display
+   (string-append
+    (format "ball在90-270之间，\n")
+    (send ball-2 format-property)
+    (format "设定时间后，\n")
+    (begin
+      (send ball-2 update-field 5 125)
+      (send ball-2 format-property))
+    "\n\n"))
   )
 
 (module+ test
-;ball在90或270：
-(define ball-3 (new ball% [at 90] [lt 1]))
-(display
- (string-append
-  (format "ball在90或270，\n")
-  (send ball-3 format-property)
-  (format "设定时间后，\n")
-  (begin
-    (send ball-3 update-field 5 95)
-    (send ball-3 format-property))
-  (format "设定时间后，\n")
-  (begin
-    (send ball-3 update-field 5 95)
-    (send ball-3 format-property))
-  "\n\n"))
+  ;ball在90或270：
+  (define ball-3 (new ball% [at 90] [lt 1]))
+  (display
+   (string-append
+    (format "ball在90或270，\n")
+    (send ball-3 format-property)
+    (format "设定时间后，\n")
+    (begin
+      (send ball-3 update-field 5 95)
+      (send ball-3 format-property))
+    (format "设定时间后，\n")
+    (begin
+      (send ball-3 update-field 5 95)
+      (send ball-3 format-property))
+    "\n\n"))
   )

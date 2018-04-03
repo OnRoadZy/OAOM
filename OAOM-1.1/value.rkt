@@ -1,10 +1,18 @@
 #lang racket
 
-(provide oaom-init
-         set-oaom-init
-         (struct-out oaom-struct)
+(provide (struct-out oaom-struct)
          g
          DT DC)
+
+(provide (contract-out
+          [oaom-init (struct/c oaom-struct
+                               real? real? integer? integer?
+                               real? real? real?)]
+          [set-oaom-init (-> #:ro real? #:ri real? #:a integer? #:n integer?
+                             #:roll-m real?
+                             #:track-m real?
+                             #:ball-m real?
+                             any )]))
 
 ;ro：外圆半径(米)；ri：内圆半径（米）；a：轮子起始角度（度）；n：轨道数（条）；
 ;roll-m：轮子质量（千克）；track-m：轨道质量（千克）；ball-m：球质量（千克）。

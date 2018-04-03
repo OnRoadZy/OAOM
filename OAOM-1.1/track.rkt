@@ -1,12 +1,17 @@
 #lang racket
 
 (require "value.rkt"
-         "ball.rkt")
+         "ball.rkt"
+         "M-class.rkt")
 
 (provide track%)
 
-(define track%
-  (class object%
+(define/contract track%
+  (class/c (init-field [at at?]
+                       [lt +real/c])
+           [update-oaom-init (->m #:m +real/c #:ri +real/c any)]
+           [update-field (->m real? any)])
+  (class M-object%
     (super-new)
     
     (init-field at ;at：轨道角度，应在(0 <= at < 360)之间
@@ -18,6 +23,8 @@
            [aF (eval-aF ri)] ;球的力矩角
            [M (eval-M ri)]) ;力矩
     
+    (inherit check-at)
+    
     ;==============================================
     ;更新oaom初始字段值：
     (define/public (update-oaom-init #:m m-set #:ri ri-set)
@@ -28,13 +35,6 @@
     (define/private (set-at dta)
       (set! at (check-at (+ at dta))))
 
-    ;检查a值，确保在360以内：
-    (define/private (check-at a)
-      (let ([ac (- a (* (quotient (truncate a) 360) 360))])
-        (if (>= ac 0)
-            ac
-            (+ ac 360))))
-       
     ;求取M值：
     (define/private (eval-M ri)
       (* (a-F-flag at)

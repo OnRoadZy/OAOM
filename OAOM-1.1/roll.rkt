@@ -2,16 +2,27 @@
 
 (require "ball.rkt"
          "track.rkt"
-         "value.rkt")
+         "value.rkt"
+         "M-class.rkt")
 
 (provide roll%
          (struct-out track/ball-struct))
 
 ;创建track/ball-struct：
 (struct track/ball-struct (track ball))
- 
-(define roll%
-  (class object%
+  
+(define/contract roll%
+  (class/c (init-field [ro +real/c] [ri +real/c]
+                       [m +real/c] [a +integer/c] [n +integer/c])
+           (field [track/balls vector?])
+           [update-oaom-init (->m #:ro +real/c #:ri +real/c
+                                  #:m +real/c #:a +integer/c #:n +integer/c
+                                  any)]
+           [get-track/balls (->m vector?)]
+           [update-field (->m +real/c any)]
+           [run (->m +integer/c any)])
+  
+  (class M-object%
     (super-new)
     
     (init-field [ro (oaom-struct-ro oaom-init)];轮子外圆半径
@@ -25,7 +36,9 @@
            [v 0] ;线速度
            [M (eval-track/balls-M)]) ;力矩
 
-    ;=============================
+    (inherit check-at)
+    
+    ;============================================================
     ;更新oaom初始字段值：
     (define/public (update-oaom-init #:ro ro-set #:ri ri-set #:m m-set #:a a-set #:n n-set)
       (set! ro ro-set)
@@ -56,13 +69,6 @@
     (define/private (eval-at i)
       (let ([a-track (+ a 90 (* (/ 360 n) i))])
         (check-at a-track)))
-    
-    ;检查a值，确保在360以内：
-    (define/private (check-at a)
-      (let ([ac (- a (* (quotient (truncate a) 360) 360))])
-        (if (>= ac 0)
-            ac
-            (+ ac 360))))
 
     ;求取轨道长度（米）：
     (define-syntax-rule (eval-l)
