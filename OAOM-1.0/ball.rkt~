@@ -1,0 +1,7 @@
+#lang racket
+
+(class ball%
+  (init m)
+  (define l v)
+  (super-new)
+  (define 
