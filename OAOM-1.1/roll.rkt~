@@ -1,9 +1,0 @@
-#lang racket
-
-(class roll%
-  (init ro ri ;ro：轮子外圆半径；ri：轮子内圆半径
-        m ;质量
-        a ;初始角度
-        n) ;轨道个数
-  (define w) ;角速度
-        

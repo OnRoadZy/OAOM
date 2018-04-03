@@ -1,8 +1,0 @@
-#lang racket
-
-(provide oaom-init
-         (struct-out oaom-struct))
-
-(struct oaom-struct (ro ri a n roll-m track-m ball-m) #:transparent)
-(define oaom-init (oaom-struct 100 20 15 5 1000 10 500))
-

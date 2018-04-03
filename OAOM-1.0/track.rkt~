@@ -1,8 +1,0 @@
-#lang racket
-(class track%
-  (init m a l);m：质量；a：角度，以小圆切角表示；l：轨道长度。
-
-  (super-new)
-
-  ;====================
-  )

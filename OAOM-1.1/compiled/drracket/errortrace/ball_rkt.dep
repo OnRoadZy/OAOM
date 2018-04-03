@@ -1,1 +1,0 @@
-("6.12" ("73a3828549ce5864326f4dc839eab6d0bfa0aac5" . "9f889f3046a41ac3a8a6900f6fdb3df6801bbc8d") #"/home/zhy/RacketProg/OAOM/OAOM-1.1/M-class.rkt" #"/home/zhy/RacketProg/OAOM/OAOM-1.1/value.rkt" (collects #"errortrace" #"errortrace-key.rkt") (collects #"racket" #"main.rkt") (collects #"racket" #"runtime-config.rkt"))
