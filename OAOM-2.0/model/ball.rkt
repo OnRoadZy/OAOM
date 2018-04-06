@@ -18,7 +18,8 @@
                 [m (oaom-struct-ball-m oaom-init)] ;球的质量.
                 [ri (oaom-struct-ri oaom-init)]) ;轮子内圆半径
 
-    (field [af (eval-af)] ;球沿轨道的受力角
+    (field [r 50] ;球半径（毫米）
+           [af (eval-af)] ;球沿轨道的受力角
            [am (eval-am)] ;加速度
            [v 0] ;当前沿轨道的速度，初始值为0
            [l (init-l)] ;在轨道上距中心端点的距离
@@ -34,8 +35,8 @@
       (set! ri ri-set))
     
     ;设置at值：
-    (define/private (set-at dta)
-      (set! at (check-at (+ at dta))))
+    (define/private (set-at a)
+      (set! at (check-at a)))
    
     ;求取af的宏：
     (define-syntax-rule (eval-af)
@@ -56,8 +57,8 @@
       (cond
         [(or (= at 90) (= at 270)) ;轨道处于水平状态，
          (* (random) lt)] ;球位置随机
-        [(and (> at 90) (< at 270)) 0]
-        [else lt]))
+        [(and (> at 90) (< at 270)) lt]
+        [else 0]))
 
     ;求取am：
     (define/private (eval-am)
@@ -67,8 +68,8 @@
     ;定义am正负标志宏：
     (define-syntax-rule (a-am-flag)
       (cond
-        [(and (> at 90) (< at 270)) -1] ;加速度与设定方向相反
-        [(or (< at 90) (> at 270)) 1] ;同向
+        [(and (> at 90) (< at 270)) 1] ;加速度与设定方向相反
+        [(or (< at 90) (> at 270)) -1] ;同向
         [else 0])) ;水平方向，为0
 
     (define/private (set-am)
@@ -143,14 +144,38 @@
       (set! M (eval-M ri)))
      
     ;更新字段：
-    (define/public (update-field dt dta)
-      (set-at dta)
+    (define/public (update-field dt a)
+      (set-at a)
       (set-af)
       (set-am)
       (set-v dt)
       (set-l dt)
       (set-aF ri)
       (set-M ri))
+
+    ;绘制球：
+    (define/public (draw dc x-center y-center scale)
+      (let ([bx-center (car (eval-ball-center))]
+            [by-center (cadr (eval-ball-center))]
+            [r-scale (* (/ r 1000) scale)])
+        (send dc draw-ellipse
+              (- (+ x-center (* bx-center scale)) r-scale)
+              (- (+ y-center (* by-center scale)) r-scale)
+              (* 2 r-scale)
+              (* 2 r-scale))))
+    ;求值球心点：
+    (define-syntax-rule (eval-ball-center)
+      (let ([a-ball (eval-a-ball)]
+            [r-ball (eval-r-ball)])
+        (list (* r-ball (cos a-ball))
+              (* r-ball (sin a-ball)))))
+    ;求取eval-a-ball：
+    (define-syntax-rule (eval-a-ball)
+      (- (degrees->radians at)
+         (atan (/ l ri))))
+    ;求取eval-r-ball：
+    (define-syntax-rule (eval-r-ball)
+      (sqrt (+ (* ri ri) (* l l))))
           
     ;查看属性值：
     (define/public (format-property)

@@ -1,0 +1,10 @@
+#lang racket
+
+;定义响应程序：==============================
+;定义运行程序：
+(define (run)
+  (display "Ok!Run is ready.Run程序已经准备好。\n"))
+
+;退出程序：
+(define (exit-app)
+  (send main-frame on-exit))

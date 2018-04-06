@@ -5,6 +5,27 @@
          "ball.rkt"
          "value.rkt")
 
+(provide roll
+         update-oaom-init)
+
+;定义全局roll对象：
+(define roll (new roll%))
+
+;初始化视图中的模型参数：
+(init-view)
+
+;初始化模型参数：
+(set-oaom-init #:ro 1.3 #:ri 0.1 #:a 20 #:n 7
+                 #:roll-m 0
+                 #:track-m 0.01
+                 #:ball-m 1)
+
+  (update-oaom-init roll)
+  (send roll run 100)
+
+;显示窗口：
+(send main-frame show #t)
+
 ;更新oaom基础参数：
 ;roll必须是roll%对象。
 (define (update-oaom-init roll)
@@ -29,9 +50,7 @@
 
 ;=====================================================
 ;测试：
-(module+ test
-;定义roll对象：
-  (define roll (new roll%))
+#|(module+ test
   ;(set-oaom-init)
   (set-oaom-init #:ro 1.3 #:ri 0.1 #:a 20 #:n 7
                  #:roll-m 0
@@ -39,6 +58,6 @@
                  #:ball-m 1)
   (update-oaom-init roll)
   (send roll run 100)
-  )
+  )|#
 
 

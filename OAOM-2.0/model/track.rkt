@@ -32,8 +32,8 @@
       (set! ri ri-set))
     
     ;设置角度a：
-    (define/private (set-at dta)
-      (set! at (check-at (+ at dta))))
+    (define/private (set-at a)
+      (set! at (check-at a)))
 
     ;求取M值：
     (define/private (eval-M ri)
@@ -80,10 +80,34 @@
       (set! M (eval-M ri)))
 
     ;更新字段：
-    (define/public (update-field dta)
-      (set-at dta)
+    (define/public (update-field a)
+      (set-at a)
       (set-aF ri)
       (set-M ri))
+
+    ;绘制轨道：
+    (define/public (draw dc x-center y-center scale ro)
+      (let ([p-start (eval-p-start)]
+            [p-end (eval-p-end ro)])
+        (send dc draw-line
+              (+ x-center (* (car p-start) scale))
+              (+ y-center (* (cadr p-start) scale))
+              (+ x-center (* (car p-end) scale))
+              (+ y-center (* (cadr p-end) scale)))))
+    ;求值p-start：
+    (define-syntax-rule (eval-p-start)
+      (let ([ari (degrees->radians at)])
+        (list (* ri (cos ari))
+              (* ri (sin ari)))))
+    ;求值p-end：
+    (define-syntax-rule (eval-p-end ro)
+      (let ([aro (eval-aro)])
+        (list (* ro (cos aro))
+              (* ro (sin aro)))))
+    ;求取eval-aro：
+    (define-syntax-rule (eval-aro)
+      (- (degrees->radians at)
+         (atan (/ lt ri))))
     
     ;查看属性值：
     (define/public (format-property)
