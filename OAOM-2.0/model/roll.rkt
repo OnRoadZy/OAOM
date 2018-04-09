@@ -12,8 +12,9 @@
 (struct track/ball-struct (track ball))
   
 (define/contract roll%
-  (class/c (init-field [ro +real/c] [ri +real/c]
-                       [m +real/c] [a +integer/c] [n +integer/c])
+  (class/c (init-field [ro +real?] [ri +real?]
+                       [m +real?] [n +integer?]
+                       [da +real?] [a +real?])
            (field [track/balls vector?])
            [reset-oaom (->m any)]
            [update-oaom (->m any)])
@@ -29,32 +30,32 @@
     
     (field [track/balls (create-track/balls)];轨道向量
            [w 0] ;角速度
-           [v 0] ;线速度
            [M (eval-track/balls-M)] ;力矩
            [aw (eval-aw)] ;角加速度
-           [dt (eval-dt)]) ;与下一次计算的间隔时间
+           [dt (eval-dt)] ;与下一次计算的间隔时间
+           [da (eval-dw dt)]) ;dt时间间隔内的角度变化
 
-    (inherit check-at
-             eval-at)
+    (inherit eval-at
+             check-a)
     
-    ;============================================================
+;============================================================
     ;重置轮子参数：
     (define/private (reset-roll)
       (set! ro (oaom-struct-ro oaom-init))
       (set! ri (oaom-struct-ri oaom-init))
       (set! m (oaom-struct-roll-m oaom-init))
       (set! a (oaom-struct-a oaom-init))
+      (set! da 0)
       (set! n (oaom-struct-n oaom-init))
       (set! w 0)
-      (set! v 0)
       (set! M (eval-track/balls-M))
       (set! aw (eval-aw))
       (set! dt (eval-dt)))
     
-    ;更新oaom初始字段值：
+    ;更新dt时间后的oaom初始字段值：
     (define/private (update-roll)
-      ;按以下顺序求字段值(aw->dt->a2->w2->v2->M2)：
-      (set-aw) (set-dt) (set-a) (set-w) (set-v) (set-M)
+      ;按以下顺序求字段值(aw->dt->da->a2->w2->v2->M2)：
+      (set-aw) (set-dt) (set-da) (set-a) (set-w) (set-M)
       (update-track/balls))
 
     ;设置轨道向量表：
@@ -64,7 +65,7 @@
     ;创建轨道向量表：
     (define/private (create-track/balls)
       (let ([tbs (make-vector n)] ;轨道球结构向量表
-            [l-track (eval-l)]) ;轨道长度
+            [l-track (eval-lt)]) ;轨道长度
         (begin
           (for ([i n])
             (let ([a-track (eval-at i a n)])
@@ -75,28 +76,36 @@
           tbs)))
     
     ;求取轨道长度（米）：
-    (define-syntax-rule (eval-l)
+    (define-syntax-rule (eval-lt)
       (sqrt (- (* ro ro) (* ri ri))))
 
-    ;求值w：
+    ;求值w（弧度/秒）：
     (define/private (set-w)
       (set! w (+ w (* 1/2 aw dt))))
+
+    ;设置字段aw：
+    (define/private (set-aw)
+      (set! aw (eval-aw)))
     
     (define-syntax-rule (eval-aw)
       (/ M (+ (* n (oaom-struct-ball-m oaom-init))
               (* n (oaom-struct-track-m oaom-init))
               m)))
-    ;设置字段aw：
-    (define/private (set-aw)
-      (set! aw (eval-aw)))
 
-    ;设置轮子起始角a：
+    ;设置轮子起始角a（度）：
     (define/private (set-a)
-      (set! a (+ a (* (+ w (* (/ aw 2) dt)) dt))))
+      (set! a
+            (check-a
+             (- a (radians->degrees
+                   (eval-dw dt))))))
 
-    ;求值线速度v：
-    (define/private (set-v)
-      (set! v (* w ro)))
+    ;设置da（度）：
+    (define/private (set-da)
+      (set! da (radians->degrees (eval-dw dt))))
+
+    ;求值a的宏（弧度）：
+    (define-syntax-rule (eval-dw dlt)
+       (+ (* w dlt) (* 1/2 aw (* dlt dlt))))
 
     ;求值力矩M：
     (define/private (eval-track/balls-M)
@@ -110,21 +119,32 @@
     
     ;设置合力矩：
     (define/private (set-M)
-      (set! M (eval-track/balls-M)))
+      (let ([M-c (eval-track/balls-M)])
+        (set! M
+              (if (> MX 0)
+                  (if (> M-c 0)
+                      (if (> M-c MX) (- M-c MX) 0)
+                      (if (> (abs M-c) MX) (+ M-c MX) 0))
+                  M-c))))
     
-    ;求值dt时间内转过的圆周长c：
-    (define/private (eval-c dlt)
-      (* v dlt))
-    
-    ;求值dt：
-    (define/public (eval-dt)
-      (if (> (eval-c DT) DC) ;按预定间隔时间计算旋转圆周间隔大于预定值
-          (/ DC v) ;以预定旋转间隔重新计算dt值
-          DT)) ;使用预定时间间隔
-
     ;设置间隔时间dt字段：
     (define/private (set-dt)
       (eval-dt))
+
+    ;求值dt：
+    (define/public (eval-dt)
+      (let ([dw-c (/ (/ DC 1000) ro)])
+        ;按预定间隔时间计算旋转角大于预定值
+        (if (<= (abs (eval-dw DT)) dw-c)
+            DT ;使用预定时间间隔
+            (let ([a-dt (abs (* 1/2 aw))]
+                  [b-dt (abs w)]
+                  [c-dt (- dw-c)])
+              (/ (- (sqrt (- (* b-dt b-dt)
+                             (* 4 a-dt c-dt)))
+                    b-dt)
+                 (* 2 a-dt))) ;以预定旋转间隔重新计算dt值
+            )))
 
     ;计算总质量：
     (define/private (total-m)
@@ -138,9 +158,10 @@
         (for/vector ([tb track/balls]
                      [i (range n)])
           (let ([track (track/ball-struct-track tb)]
-                [ball (track/ball-struct-ball tb)])
-            (send track update-field (eval-at i a n))
-            (send ball update-field dt (eval-at i a n)))))
+                [ball (track/ball-struct-ball tb)]
+                [a-track (eval-at i a n)])
+            (send track update-field a-track)
+            (send ball update-field dt a-track))))
 
     ;重置oaom模型：
     (define/public (reset-oaom)
@@ -151,19 +172,10 @@
 
     ;更新oaom模型：
     (define/public (update-oaom)
-      ;重置轮子的起始角：
+      ;更新轮子参数：
       (update-roll)
       ;更新track/balls参数：
-      (for/vector ([tb track/balls])
-        (let ([track (track/ball-struct-track tb)]
-              [ball  (track/ball-struct-ball tb)])
-          (begin
-            (send track update-oaom-init
-                  #:m (oaom-struct-track-m oaom-init)
-                  #:ri (oaom-struct-ri oaom-init))
-            (send ball update-oaom-init
-                  #:m (oaom-struct-ball-m oaom-init)
-                  #:ri (oaom-struct-ri oaom-init))))))
+      (update-track/balls))
     
     ;绘制轮子：
     (define/public (draw dc w-canvas h-canvas)
@@ -197,17 +209,23 @@
     ;旋转轮子：
     ;即，求值轮子在dlt时间内或c旋转角后（取决于判断）的参数值。
     (define/public (run times)
+      (reset-roll)
       (for ([i times])
-        (let ([dlt (eval-dt)])
-          (update-roll)
-          (display (format-property))))) ;显示变化情况
+        (update-roll)
+        (display (format-main-property)))) ;显示变化情况
     
-    ;查看属性值：
-    (define/public (format-property)
-      (format "ro：~a；ri：~a；m：~a；n：~a；\ndt：~a；w：~a；v：~a；M：~a；\ntrack/balls：~a。\n"
+    ;查看全部属性值：
+    (define/public (format-all-property)
+      (format "ro：~a；ri：~a；m：~a；n：~a；\ndt：~a；w：~a；a：~a；M：~a；\ntrack/balls：~a。\n"
               ro ri m n
-              dt w v M
+              dt w a M
               track/balls))
+
+    ;查看主要属性值：
+    (define/public (format-main-property)
+      (format "ro：~a；ri：~a；m：~a；n：~a；\ndt：~a；w：~a；a：~a；M：~a。\n"
+              ro ri m n
+              dt w a M))
     
     ;查看轨道球体向量内容：
     (define/public (format-track/ball)
@@ -218,8 +236,8 @@
             (begin
               (string-append str
                              (format "~a\n~a\n"
-                                     (send track get-property)
-                                     (send ball get-property))))))))
+                                     (send track format-property)
+                                     (send ball format-property))))))))
     ))
 
 ;测试：====================================================================
@@ -238,6 +256,21 @@
 (module+ test
   (display (send roll format-track/ball)))
 |#
-
+#|
 (module+ test
   (send roll run 10))
+|#
+#|
+(module+ test
+  (set-oaom-init #:ro 1.3 #:ri 0.2 #:a 0 #:n 1
+                       #:roll-m 1
+                       #:track-m 1
+                       #:ball-m 5)
+  (send roll run 100))
+|#
+(module+ test
+  (set-oaom-init #:ro 1.3 #:ri 0.2 #:a 15 #:n 10
+                       #:roll-m 1
+                       #:track-m 1
+                       #:ball-m 10)
+  (send roll run 100))

@@ -2,7 +2,8 @@
 
 (require racket/gui)
 
-(provide main-frame)
+(provide main-frame
+         statuebar/message)
 
 ;定义主界面=======================
 (define main-frame
@@ -147,6 +148,10 @@
 (define pane/ball/message (rule/pane/message-parameter pane/ball))
 (define pane/ball/field (rule/pane/field-parameter pane/ball))
 
+(define groupbox/run (rule/groupbox-parameter "运行参数"))
+(define pane/run (rule/pane-parameter groupbox/run))
+(define pane/run/message (rule/pane/message-parameter pane/run))
+(define pane/run/field (rule/pane/field-parameter pane/run))
 ;定义提示宏：
 (define-syntax-rule (rule/message-parameter l p)
   (new message%
@@ -182,8 +187,14 @@
 (rule/message-parameter "球质量（千克）：" pane/ball/message)
 (define field/ball-m (rule/field-parameter pane/ball/field))
 
+(rule/message-parameter "旋转间隔（毫米）：" pane/run/message)
+(define field/DC (rule/field-parameter pane/run/field))
+
+(rule/message-parameter "时间间隔（秒）：" pane/run/message)
+(define field/DT (rule/field-parameter pane/run/field))
+
 ;定义状态栏控件：------------------------------------------------------
-(define footbar/message
+(define statuebar/message
   (new message%
        [label "准备就绪……"]
        [parent panel/statue-bar]

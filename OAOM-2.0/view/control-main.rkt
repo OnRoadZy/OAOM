@@ -13,16 +13,13 @@
 ;定义全局oaom-roll对象：
 (define oaom-roll (new roll%))
 
-;初始化系统时钟：
+;定义系统时钟：
 (define oaom-timer
   (new timer%
-       [interval 10]
+       [interval 1]
        [notify-callback
         (lambda ()
           (update-draw-oaom))]))
-
-;定义运行时间（初始为10分钟）：
-(define run-times 10)
 
 ;视图模型参数初始化：
 (define (init-view)
@@ -39,7 +36,11 @@
            [ball (track/ball-struct-ball tb)])
       (begin
         (send field/track-m set-value (number->string (get-field m track)))
-        (send field/ball-m set-value (number->string (get-field m ball)))))))
+        (send field/ball-m set-value (number->string (get-field m ball))))))
+
+  ;设置运行参数：
+  (send field/DC set-value (number->string DC))
+  (send field/DT set-value (number->string DT)))
 
 ;定义运行程序：
 (define (run)
@@ -52,23 +53,38 @@
                  #:roll-m (string->number (send field/roll-m get-value))
                  #:track-m (string->number (send field/track-m get-value))
                  #:ball-m (string->number (send field/ball-m get-value)))
+  (set-DC (string->number (send field/DC get-value)))
+  (set-DT (string->number (send field/DT get-value)))
 
   ;重置模型数据：
   (send oaom-roll reset-oaom)
   ;在画布上绘制模型：
   (draw-oaom oaom-roll)
-  ;设定时钟：
+
+  ;启动时钟：
   (start-oaom-timer))
 
-;定义停止程序：
+;定义停止时钟：
 (define (stop)
   (send oaom-timer stop))
    
-;设置时钟的宏：
+;启动时钟：
 (define-syntax-rule (start-oaom-timer)
-  (send oaom-timer start
-        (exact-truncate (* (get-field dt oaom-roll) 1000))))
-  
+  (begin
+    (send statuebar/message set-label (format-statue-info))
+    (send oaom-timer start
+          (exact-truncate (* (get-field dt oaom-roll) 1000)))))
+
+;设置状态栏运行信息：
+(define (format-statue-info)
+  (format "当前运行状态>>~a~a~a~a~a~a。"
+          "时间间隔："
+          (number->string (send oaom-timer interval))
+          "，合力矩："
+          (number->string (get-field M oaom-roll))
+          "，旋转角速度："
+          (number->string (get-field w oaom-roll))))
+
 ;更新oaom的绘制：
 (define (update-draw-oaom)
   (send oaom-roll update-oaom)

@@ -8,8 +8,8 @@
 
 (define/contract track%
   (class/c (init-field [at at?]
-                       [lt +real/c])
-           [update-oaom-init (->m #:m +real/c #:ri +real/c any)]
+                       [lt +real?])
+           [update-oaom-init (->m #:m +real? #:ri +real? any)]
            [update-field (->m real? any)])
   (class M-object%
     (super-new)
@@ -20,10 +20,15 @@
                 [ri (oaom-struct-ri oaom-init)]) ;轮子内圆半径
 
     (field [l (/ lt 2)] ;轨道中心点长度（半长）
-           [aF (eval-aF ri)] ;球的力矩角
-           [M (eval-M ri)]) ;力矩
+           [aL (eval-aL at l ri)] ;力臂圆心角度
+           [aF (eval-aF at (eval-af at) l ri)] ;球的力矩角
+           [M (eval-M)]) ;力矩
     
-    (inherit check-at)
+    (inherit check-a
+             eval-af
+             eval-aF
+             eval-aL
+             F-flag)
     
     ;==============================================
     ;更新oaom初始字段值：
@@ -31,59 +36,43 @@
       (set! m m-set)
       (set! ri ri-set))
     
-    ;设置角度a：
-    (define/private (set-at a)
-      (set! at (check-at a)))
+    ;设置角度a（度）：
+    (define/private (set-at a-track)
+      (set! at a-track))
 
+    ;设置M值：
+    (define/private (set-M)
+      (set! M (eval-M)))
+    
     ;求取M值：
-    (define/private (eval-M ri)
-      (* (a-F-flag at)
-         (eval-F ri)
-         (eval-L ri)))
+    (define/private (eval-M)
+      (* (eval-F) (eval-L)))
     
     ;求值F的宏：
-    (define-syntax-rule (eval-F ri)
-      (* (* m g)
-         (abs (sin (eval-aF ri)))))
-    
-    ;求值aF的宏：
-    (define-syntax-rule (eval-aF ri)
-      (+ (degrees->radians at)
-         (* (aF-flag) (atan (/ ri l)))))
-    
-    ;求值aF-flag的宏：
-    (define-syntax-rule (aF-flag)
-      (cond
-        [(or (and (> at 0) (< at 90))
-             (and (> at 180) (< at 270))) 1]
-        [(or (and (>= at 90) (< at 180))
-             (and (>= at 270) (< at 360))) -1]
-        [else 0]))
-    
-    ;设置aF字段：
-    (define/private (set-aF ri)
-      (set! aF (eval-aF ri)))
+    (define-syntax-rule (eval-F)
+      (* (F-flag aL)
+         (* m g)
+         (abs (sin (degrees->radians aF)))))
+
+    ;设置aF字段（度）：
+    (define/private (set-aF)
+      (set! aF (eval-aF at (eval-af at) l ri)))
+
+    ;设置aL字段（度）：
+    (define/private (set-aL)
+      (eval-aL at l ri))
     
     ;求取L的宏：
-    (define-syntax-rule (eval-L ri)
+    (define-syntax-rule (eval-L)
       (sqrt (+ (* ri ri) (* l l))))
-    
-    ;定义M正负标志宏：
-    (define-syntax-rule (a-F-flag a)
-      (cond
-        [(and (> a 180) (< a 360)) -1] ;加速度与设定方向相反
-        [(and (> a 0) (< a 180)) 1] ;同向
-        [else 0])) ;垂直方向，为0
-    
-    ;设置M值：
-    (define/private (set-M ri)
-      (set! M (eval-M ri)))
 
     ;更新字段：
-    (define/public (update-field a)
-      (set-at a)
-      (set-aF ri)
-      (set-M ri))
+    ;按这个顺序：at->aF->M
+    (define/public (update-field a-track)
+      (set-at a-track)
+      (set-aL)
+      (set-aF)
+      (set-M))
 
     ;绘制轨道：
     (define/public (draw dc x-center y-center scale ro)
@@ -104,7 +93,8 @@
       (let ([aro (eval-aro)])
         (list (* ro (cos aro))
               (* ro (sin aro)))))
-    ;求取eval-aro：
+    
+    ;求取eval-aro（弧度）：
     (define-syntax-rule (eval-aro)
       (- (degrees->radians at)
          (atan (/ lt ri))))
