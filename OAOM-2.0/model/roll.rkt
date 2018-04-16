@@ -205,7 +205,8 @@
       (if (> w h)
           (/ h (* 2 ro))
           (/ w (* 2 ro))))
-       
+
+    ;以下代码可做测试------------------------------------------------
     ;旋转轮子：
     ;即，求值轮子在dlt时间内或c旋转角后（取决于判断）的参数值。
     (define/public (run times)
@@ -213,7 +214,7 @@
       (for ([i times])
         (update-roll)
         (display (format-main-property)))) ;显示变化情况
-    
+
     ;查看全部属性值：
     (define/public (format-all-property)
       (format "ro：~a；ri：~a；m：~a；n：~a；\ndt：~a；w：~a；a：~a；M：~a；\ntrack/balls：~a。\n"

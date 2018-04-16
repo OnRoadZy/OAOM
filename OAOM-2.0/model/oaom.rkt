@@ -9,7 +9,7 @@
 ;roll必须是roll%对象。
 (define (update-oaom-init roll)
   ;更新roll参数：
-  (send roll update-oaom-init
+  (send roll reset-roll
         #:ro (oaom-struct-ro oaom-init)
         #:ri (oaom-struct-ri oaom-init)
         #:m (oaom-struct-roll-m oaom-init)
@@ -37,7 +37,7 @@
                  #:roll-m 0
                  #:track-m 0.01
                  #:ball-m 1)
-  (update-oaom-init roll)
+  (reset-roll roll)
   (send roll run 100)
   )
 
